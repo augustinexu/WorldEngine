@@ -1,13 +1,9 @@
 import os
-import tempfile
 import uuid
 import urllib.request
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import cv2
-import numpy as np
-import json
-import time
 from werkzeug.utils import secure_filename
 
 # Import AI model modules
@@ -126,7 +122,7 @@ def analyze_video():
             return jsonify({'error': 'Failed to extract frames from video'}), 400
 
         # Process frames using the selected AI model
-        results = processor.analyze_video(frames, timestamps, video_path)
+        results = processor.analyze_video(video_path)
 
         # Clean up temporary file
         try:

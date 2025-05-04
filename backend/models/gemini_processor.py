@@ -1,140 +1,211 @@
 """
 Gemini Video Processor Module
-Uses Google's Gemini Pro Vision API for video analysis
+Uses Google's Gemini API for video analysis
 """
 import os
 import json
-from PIL import Image
+import time
 import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()  # Load environment variables from .env file
 
-
 class GeminiVideoProcessor:
-    def __init__(self):
+    def __init__(self, model_name="gemini-1.5-pro-latest"):
+        """
+        Initializes the GeminiVideoProcessor.
+
+        Args:
+            model_name (str): The name of the Gemini model to use
+                               (e.g., 'gemini-1.5-pro-latest', 'gemini-2.5-pro-latest').
+                               Models like 1.5 Pro or newer are recommended for video.
+        """
         # Configure the Gemini API with your API key
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY not found in environment variables")
 
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-pro-vision')
+        print(f"Initializing Gemini model: {model_name}")
+        self.model = genai.GenerativeModel(model_name)
+        self.model_name = model_name # Store for reference
 
-    def analyze_video(self, frames, timestamps, video_path=None):
+    def _robust_json_load(self, text_response):
+        """Attempts to extract and load JSON from a text response."""
+        # Try finding JSON within ```json ... ``` markdown blocks
+        try:
+            json_block_start = text_response.find('```json')
+            if json_block_start != -1:
+                json_start = text_response.find('{', json_block_start)
+                json_end = text_response.rfind('}') + 1
+                if json_start != -1 and json_end > json_start:
+                    json_str = text_response[json_start:json_end]
+                    return json.loads(json_str)
+
+            # If no markdown block, try finding the first '{' and last '}'
+            json_start = text_response.find('{')
+            json_end = text_response.rfind('}') + 1
+            if json_start != -1 and json_end > json_start:
+                 json_str = text_response[json_start:json_end]
+                 return json.loads(json_str)
+
+            # If still no luck, try parsing the whole thing (might fail)
+            return json.loads(text_response)
+
+        except json.JSONDecodeError as e:
+            print(f"Warning: Failed to decode JSON from response. Error: {e}")
+            print(f"Raw response text was:\n---\n{text_response}\n---")
+            return None # Indicate failure to parse
+
+    def analyze_video(self, video_path: str, request_timeout: int = 600):
         """
-        Analyze video frames using Gemini Pro Vision.
+        Analyzes a video file using the Gemini API by uploading it first.
 
         Args:
-            frames: List of video frames (numpy arrays)
-            timestamps: List of timestamps corresponding to each frame
-            video_path: Path to the original video file (optional)
+            video_path (str): Path to the local video file.
+            request_timeout (int): Timeout in seconds for the API generation request.
 
         Returns:
-            Dictionary containing analysis results
+            dict: A dictionary containing the analysis results (list of segments)
+                  or an empty list if analysis fails. Returns None on critical error.
         """
+        print(f"\nStarting video analysis for: {video_path}")
+        print(f"Using model: {self.model_name}")
+
+        uploaded_file_object = None # To store the file object for cleanup
+
         try:
-            # We'll use a subset of frames to avoid hitting API limits
-            max_frames = 20  # Adjust based on API limits
+            # 1. Check if file exists
+            if not os.path.exists(video_path):
+                print(f"Error: Video file not found at: {video_path}")
+                return None # Critical error
 
-            if len(frames) > max_frames:
-                # Sample frames evenly
-                step = len(frames) // max_frames
-                selected_indices = list(range(0, len(frames), step))[:max_frames]
+            # 2. Upload the video file using the File API
+            print(f"[1/4] Uploading file via File API: {video_path}...")
+            uploaded_file_object = genai.upload_file(
+                path=video_path,
+                display_name=os.path.basename(video_path)
+            )
+            print(f"    Upload complete. File Name in API: {uploaded_file_object.name}")
+            print(f"    File URI: {uploaded_file_object.uri}")
 
-                selected_frames = [frames[i] for i in selected_indices]
-                selected_timestamps = [timestamps[i] for i in selected_indices]
-            else:
-                selected_frames = frames
-                selected_timestamps = timestamps
+            # 3. Wait for the video file to be processed ('ACTIVE' state)
+            print("[2/4] Processing video (this might take a few minutes)...")
+            polling_interval_seconds = 15
+            max_processing_time_seconds = 600 # Adjust if needed for very long videos
+            start_time = time.time()
 
-            # Convert frames to PIL Images for Gemini API
-            pil_images = []
-            for frame in selected_frames:
-                img = Image.fromarray(frame)
-                pil_images.append(img)
+            file_state = uploaded_file_object.state.name
+            while file_state == "PROCESSING":
+                elapsed_time = time.time() - start_time
+                if elapsed_time > max_processing_time_seconds:
+                    raise TimeoutError(f"Video processing timed out after {max_processing_time_seconds} seconds.")
 
-            # Create prompt for Gemini
+                print(f"    Status: PROCESSING (checking again in {polling_interval_seconds}s)...")
+                time.sleep(polling_interval_seconds)
+                # Fetch the latest status
+                uploaded_file_object = genai.get_file(uploaded_file_object.name)
+                file_state = uploaded_file_object.state.name
+
+            if file_state != "ACTIVE":
+                raise Exception(f"Video processing failed. Final state: {file_state}")
+
+            print("    Status: ACTIVE. Video ready for analysis.")
+
+            # 4. Define the Prompt for video analysis
+            #    Instructing JSON output clearly is crucial.
             prompt = """
-            You are an AI assistant specialized in analyzing robotic videos. 
-            Analyze the provided sequence of frames from a robotic dashcam video.
+            You are an AI assistant specialized in analyzing robotic videos.
+            Analyze the provided video file, which contains footage from a robot's perspective or observing a robot.
 
-            Identify different segments of activities in the video, such as:
-            1. Robot picks up an object
-            2. Robot places an object
-            3. Robot navigates to a location
-            4. Robot manipulates a tool
-            5. Robot interacts with a human
-            6. Robot performs an inspection
+            Identify the distinct sequential segments of activities performed by the robot. Examples include:
+            - Picking up an object
+            - Placing an object
+            - Navigating between locations
+            - Manipulating a tool or part
+            - Interacting with its environment (e.g., opening a door, pressing a button)
+            - Performing an inspection task
+            - Waiting or idle periods (if significant)
 
-            For each identified segment, provide:
-            1. The start and end timestamps
-            2. A clear description of what the robot is doing
+            For each identified segment, determine:
+            1. The start time of the segment (in total seconds from the video start, e.g., 12.5).
+            2. The end time of the segment (in total seconds from the video start, e.g., 18.0).
+            3. A concise, clear description of the robot's primary activity during that segment.
 
-            Format your response as a valid JSON object with this structure:
+            Format your entire response *only* as a single, valid JSON object. Do not include any text before or after the JSON object.
+            Use the following structure:
             {
               "segments": [
                 {
-                  "start_time": start_timestamp_in_seconds,
-                  "end_time": end_timestamp_in_seconds,
-                  "description": "Description of the robot's activity"
+                  "start_time": <start_timestamp_in_seconds_float>,
+                  "end_time": <end_timestamp_in_seconds_float>,
+                  "description": "<Description of the robot's activity>"
+                },
+                {
+                  "start_time": <start_timestamp_in_seconds_float>,
+                  "end_time": <end_timestamp_in_seconds_float>,
+                  "description": "<Description of the next activity>"
                 },
                 ...
               ]
             }
+
+            Ensure timestamps are floating-point numbers representing seconds.
+            Ensure the segments cover the relevant activities chronologically.
             """
 
-            # Call Gemini API with the frames
-            response = self.model.generate_content([prompt] + pil_images)
+            # 5. Generate content using the model
+            print("[3/4] Sending video and prompt to Gemini for analysis...")
 
-            # Extract the JSON response
-            response_text = response.text
+            # Construct the request content
+            contents = [
+                uploaded_file_object,  # Pass the file object
+                prompt
+            ]
 
-            # Find JSON content in the response
-            try:
-                # Try to find a JSON block in the response
-                json_start = response_text.find('{')
-                json_end = response_text.rfind('}') + 1
+            # Make the API call
+            response = self.model.generate_content(
+                contents,
+                request_options={'timeout': request_timeout}
+            )
 
-                if json_start >= 0 and json_end > json_start:
-                    json_content = response_text[json_start:json_end]
-                    result = json.loads(json_content)
-                else:
-                    # If no JSON block found, try to parse the entire response
-                    result = json.loads(response_text)
+            print("[4/4] Analysis received.")
 
-                # Validate the result structure
-                if 'segments' not in result:
-                    result = {'segments': []}
+            # 6. Process the response and attempt to parse JSON
+            analysis_result = self._robust_json_load(response.text)
 
-                return result
+            if analysis_result and 'segments' in analysis_result:
+                print("Successfully parsed analysis results.")
+                return analysis_result
+            else:
+                print("Failed to get valid structured data from the model.")
+                # Return empty structure on failure instead of fabricated data
+                return {"segments": []}
 
-            except json.JSONDecodeError:
-                # If JSON parsing fails, create default segments based on heuristics
-                # This is a fallback in case the model doesn't return valid JSON
-                print(f"Failed to parse Gemini response as JSON. Creating default segments.")
 
-                # Simple fallback: divide the video into equal segments
-                total_duration = timestamps[-1]
-                num_segments = min(3, len(selected_frames) // 2)  # At least 2 frames per segment
-                segment_duration = total_duration / num_segments
-
-                segments = []
-                for i in range(num_segments):
-                    start_time = i * segment_duration
-                    end_time = (i + 1) * segment_duration
-
-                    # Generate a basic description
-                    description = f"Robot activity detected in segment {i + 1}"
-
-                    segments.append({
-                        "start_time": start_time,
-                        "end_time": end_time,
-                        "description": description
-                    })
-
-                return {"segments": segments}
-
+        except FileNotFoundError:
+             # Already handled logging inside the try block
+             return None
         except Exception as e:
-            print(f"Error in Gemini processing: {str(e)}")
-            return {"segments": []}
+            print(f"An error occurred during video analysis: {e}")
+            # Depending on severity, you might want to log traceback
+            # import traceback
+            # traceback.print_exc()
+            return {"segments": []} # Return empty on general failure
+
+        finally:
+            # 7. Clean up: Delete the uploaded file from API storage
+            if uploaded_file_object:
+                 try:
+                    print(f"\nCleaning up: Attempting to delete uploaded file {uploaded_file_object.name}...")
+                    # Re-fetch just in case the object state is stale, though name should persist
+                    file_to_delete = genai.get_file(name=uploaded_file_object.name)
+                    if file_to_delete:
+                        genai.delete_file(name=file_to_delete.name)
+                        print("    File deleted successfully.")
+                    else:
+                        print("    File object not found for deletion (might have already been deleted or failed earlier).")
+                 except Exception as delete_error:
+                     print(f"    Warning: Failed to delete uploaded file {uploaded_file_object.name}. Error: {delete_error}")
+                     print("    You may need to delete it manually via Google AI Studio or the API.")
+
