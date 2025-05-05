@@ -1,0 +1,133 @@
+.prompt-input-container {
+    margin: 20px 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+  
+  .prompt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background-color: #f5f5f5;
+    cursor: pointer;
+    user-select: none;
+  }
+  
+  .prompt-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+  }
+  
+  .expand-icon {
+    font-size: 12px;
+    transition: transform 0.3s ease;
+  }
+  
+  .expand-icon.expanded {
+    transform: rotate(180deg);
+  }
+  
+  .prompt-content {
+    padding: 20px;
+  }
+  
+  .prompt-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  
+  .toggle-container {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+    background-color: #ccc;
+    border-radius: 20px;
+    margin-right: 10px;
+    transition: background-color 0.3s;
+  }
+  
+  .toggle-container input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  .toggle-switch:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+  }
+  
+  .toggle-container input:checked + .toggle-switch {
+    background-color: #2196F3;
+  }
+  
+  .toggle-container input:checked + .toggle-switch:before {
+    transform: translateX(20px);
+  }
+  
+  .toggle-label {
+    font-size: 14px;
+  }
+  
+  .prompt-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: 'Roboto', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: vertical;
+  }
+  
+  .default-prompt-display {
+    padding: 12px;
+    background-color: #f9f9f9;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.5;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
+  .prompt-info {
+    margin-top: 15px;
+    font-size: 12px;
+    color: #666;
+  }
+  
+  .reset-button {
+    background-color: transparent;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #666;
+  }
+  
+  .reset-button:hover {
+    background-color: #f0f0f0;
+  }
