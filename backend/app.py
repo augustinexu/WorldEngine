@@ -28,8 +28,8 @@ def allowed_file(filename):
 def get_model_processor(model_name):
     processors = {
         'gemini': GeminiVideoProcessor(),
-        'gpt4': GPT4VideoProcessor(),
-        'claude': ClaudeVideoProcessor(),
+        # 'gpt4': GPT4VideoProcessor(),
+        # 'claude': ClaudeVideoProcessor(),
     }
     return processors.get(model_name, GeminiVideoProcessor())  # Default to Gemini
 
@@ -79,6 +79,7 @@ def download_video(url, output_path):
 
 @app.route('/analyze', methods=['POST'])
 def analyze_video():
+    print(request.form)
     if 'video' not in request.files and 'video_url' not in request.form:
         return jsonify({'error': 'No video file or URL provided'}), 400
 
@@ -122,7 +123,11 @@ def analyze_video():
             return jsonify({'error': 'Failed to extract frames from video'}), 400
 
         # Process frames using the selected AI model
-        results = processor.analyze_video(video_path)
+        if model_name in ['gpt4', 'claude']:
+            frames, timestamps = extract_frames(video_path, sample_rate=1)
+            results = processor.analyze_video(frames, timestamps, video_path)
+        else:  # gemini
+            results = processor.analyze_video(video_path)
 
         # Clean up temporary file
         try:
