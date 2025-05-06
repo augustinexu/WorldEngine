@@ -16,15 +16,27 @@ command -v npm >/dev/null 2>&1 || { echo -e "${YELLOW}npm is required but not in
 command -v python3 >/dev/null 2>&1 || { echo -e "${YELLOW}python3 is required but not installed. Please install Python 3.8+ first.${NC}"; exit 1; }
 command -v pip3 >/dev/null 2>&1 || { echo -e "${YELLOW}pip3 is required but not installed. Please install pip first.${NC}"; exit 1; }
 
+# Get the project root directory
+PROJECT_ROOT="$(pwd)"
+
 # Create necessary directories
 echo "Creating project directories..."
-mkdir -p backend/temp_videos
-mkdir -p backend/models
+mkdir -p "${PROJECT_ROOT}/backend/temp_videos"
 
 # Check for .env file
-if [ ! -f .env ]; then
-    echo -e "${YELLOW}Creating .env file from example...${NC}"
-    cp .env.example .env
+if [ ! -f "${PROJECT_ROOT}/.env" ]; then
+    echo -e "${YELLOW}Creating .env file...${NC}"
+    # Create a basic .env file with placeholder API keys
+    cat > "${PROJECT_ROOT}/.env" << EOL
+# Google Gemini API
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# OpenAI API
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Anthropic API
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+EOL
     echo -e "${YELLOW}Please edit .env file with your API keys before continuing.${NC}"
     read -p "Press Enter to continue after editing the .env file (or Ctrl+C to exit)..."
 fi
@@ -32,7 +44,7 @@ fi
 # Function to run backend
 run_backend() {
     echo -e "${BLUE}Setting up Python backend...${NC}"
-    cd backend
+    cd "${PROJECT_ROOT}/backend"
 
     # Check for virtual environment
     if [ ! -d "venv" ]; then
@@ -44,35 +56,20 @@ run_backend() {
     echo "Activating virtual environment..."
     source venv/bin/activate || { echo -e "${YELLOW}Failed to activate virtual environment. Aborting.${NC}"; exit 1; }
 
-    # Install requirements
+    # Install requirements using requirements.txt
     echo "Installing Python dependencies in virtual environment..."
     pip install --upgrade pip
-
-    # Install dependencies incrementally to avoid conflicts
-    echo "Installing core packages..."
-    pip install flask flask-cors python-dotenv
-
-    echo "Installing image processing packages..."
-    pip install opencv-python numpy pillow
-
-    echo "Installing networking packages..."
-    pip install requests werkzeug
-
-    echo "Installing AI model APIs..."
-    pip install google-generativeai openai anthropic
-
-    echo "Installing ML libraries (this may take a while)..."
-    pip install torch torchvision
+    pip install -r "${PROJECT_ROOT}/requirements.txt"
 
     # Run Flask app
-    echo -e "${GREEN}Starting backend server at http://localhost:5000${NC}"
+    echo -e "${GREEN}Starting backend server at http://127.0.0.1:5000${NC}"
     python app.py
 }
 
 # Function to run frontend
 run_frontend() {
     echo -e "${BLUE}Setting up React frontend...${NC}"
-    cd frontend
+    cd "${PROJECT_ROOT}/frontend"
 
     # Install dependencies if node_modules doesn't exist
     if [ ! -d "node_modules" ]; then
@@ -97,9 +94,15 @@ echo
 
 read -p "Press Enter to continue or Ctrl+C to exit..."
 
+# Use trap to ensure both processes are terminated when script is interrupted
+trap "pkill -P $$; exit 1" INT TERM EXIT
+
 # Run backend and frontend in parallel
 run_backend &
+BACKEND_PID=$!
+
 run_frontend &
+FRONTEND_PID=$!
 
 # Wait for both processes
-wait
+wait $BACKEND_PID $FRONTEND_PID
