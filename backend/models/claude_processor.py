@@ -51,8 +51,6 @@ class ClaudeVideoProcessor:
                 selected_frames = frames
                 selected_timestamps = timestamps
 
-            # Convert frames to base64 for API
-            content_blocks = []
 
             # Add the prompt as text block
             if custom_prompt:
@@ -113,9 +111,12 @@ class ClaudeVideoProcessor:
                 Only provide the JSON object with no additional text.
                 """
 
-            content_blocks.append({
+            content = []
+
+            # Add the text prompt first
+            content.append({
                 "type": "text",
-                "text": prompt
+                "text": prompt_text
             })
 
             # Add image blocks for each frame
@@ -129,7 +130,7 @@ class ClaudeVideoProcessor:
                 img_str = base64.b64encode(buffered.getvalue()).decode()
 
                 # Add image block with timestamp
-                content_blocks.append({
+                content.append({
                     "type": "image",
                     "source": {
                         "type": "base64",
@@ -138,7 +139,7 @@ class ClaudeVideoProcessor:
                     }
                 })
 
-            # Call Claude API
+            # Call Claude API with the correct message structure
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=1000,
@@ -147,7 +148,7 @@ class ClaudeVideoProcessor:
                 messages=[
                     {
                         "role": "user",
-                        "content": content_blocks
+                        "content": content  # This is now a list of content blocks
                     }
                 ]
             )
