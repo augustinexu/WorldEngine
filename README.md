@@ -6,10 +6,7 @@ This application automatically labels robotic dashcam videos using various AI mo
 
 - Upload videos via URL or local file
 - Video analysis using multiple AI models:
-  - Google Gemini Pro Vision
-  - OpenAI GPT-4 Vision
-  - Anthropic Claude 3
-  - Custom fine-tuned model option
+  - Google Gemini Pro 1.5
 - Interactive video player with timeline visualization
 - Segment-based navigation
 - Export analysis results
@@ -51,7 +48,7 @@ robotic-video-analyzer/
 
 - Node.js and npm
 - Python 3.8+
-- API keys for models you plan to use (Gemini, OpenAI, and/or Anthropic)
+- API keys for models you plan to use Gemini
 
 ### Backend Setup
 
@@ -83,7 +80,7 @@ robotic-video-analyzer/
    cd backend
    python app.py
    ```
-   The server will start on http://localhost:5000
+   The server will start on http://127.0.0.1:5000
 
 ### Frontend Setup
 
