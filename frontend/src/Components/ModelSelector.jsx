@@ -4,8 +4,8 @@ import './ModelSelector.css';
 const ModelSelector = ({ selectedModel, onModelChange }) => {
   const models = [
     { id: 'gemini', name: 'Google Gemini', description: 'Google\'s multimodal AI model with strong video understanding' },
-    { id: 'gpt4', name: 'OpenAI GPT-4 Vision', description: 'OpenAI\'s multimodal vision model for analyzing visual content' },
-    { id: 'claude', name: 'Anthropic Claude 3', description: 'Claude\'s vision capabilities for detailed video analysis' },
+    // { id: 'gpt4', name: 'OpenAI GPT-4 Vision', description: 'OpenAI\'s multimodal vision model for analyzing visual content' },
+    // { id: 'claude', name: 'Anthropic Claude 3', description: 'Claude\'s vision capabilities for detailed video analysis' },
   ];
 
   return (
