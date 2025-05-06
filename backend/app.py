@@ -12,7 +12,7 @@ from models.gpt4_processor import GPT4VideoProcessor
 from models.claude_processor import ClaudeVideoProcessor
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
 # Configuration
 UPLOAD_FOLDER = 'temp_videos'

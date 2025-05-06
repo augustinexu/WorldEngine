@@ -172,6 +172,19 @@ class GeminiVideoProcessor:
 
                 # Simple status check (not a loop in this version)
                 print(f"    File state: {file_object.state}")
+                wait_time = 3
+                while True:
+                    file_object = self.client.files.get(name=uploaded_file.name)
+                    # print(f"    Attempt {attempt+1}/{max_attempts}: File state: {file_object.state}")
+
+                    if file_object.state == "ACTIVE":
+                        print("    File is ACTIVE and ready for processing.")
+                        break
+
+                    # Exponential backoff with a cap
+                    wait_time = min(wait_time * 1.5, 20)  # Increase wait time, but cap at 20 seconds
+                    print(f"    Waiting {wait_time:.1f} seconds before checking again...")
+                    time.sleep(wait_time)
 
                 # Prepare content with file reference
                 content = [prompt, uploaded_file]
@@ -180,8 +193,7 @@ class GeminiVideoProcessor:
                 # Make the API call with file reference
                 response = self.client.models.generate_content(
                     model=self.model_name,
-                    contents=content,
-                    generation_config={"temperature": 0.2, "max_output_tokens": 2048}
+                    contents=content
                 )
                 print("[4/4] Analysis received.")
 
