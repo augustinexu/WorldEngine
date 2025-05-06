@@ -88,7 +88,7 @@ For each segment, provide start time, end time, and description.`
       formData.append('model', selectedModel);
       formData.append('custom_prompt', customPrompt);
       
-      const response = await fetch('http://localhost:5000/analyze', {
+      const response = await fetch('http://127.0.0.1:5000/analyze', {
         method: 'POST',
         body: formData,
       });
