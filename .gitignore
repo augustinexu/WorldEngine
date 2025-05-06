@@ -9,6 +9,7 @@
 /frontend/node_modules/
 /venv/
 
+
 # IDE
 .idea/
 .vscode/
@@ -51,3 +52,13 @@ coverage.xml
 /backend/models/__pycache__/
 /backend/**/__pycache__/
 /backend/temp_videos/
+
+# Environment variables - prevent API keys from being committed
+.env
+*.env
+.env.*
+!.env.example
+
+# Temporary files
+*.log
+*.tmp
