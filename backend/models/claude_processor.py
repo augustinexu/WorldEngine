@@ -23,7 +23,7 @@ class ClaudeVideoProcessor:
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = "claude-3-opus-20240229"  # Using Opus for best vision capabilities
 
-    def analyze_video(self, frames, timestamps, video_path=None):
+    def analyze_video(self, frames, timestamps, video_path=None, custom_prompt=None):
         """
         Analyze video frames using Claude 3's vision capabilities.
 
@@ -31,6 +31,7 @@ class ClaudeVideoProcessor:
             frames: List of video frames (numpy arrays)
             timestamps: List of timestamps corresponding to each frame
             video_path: Path to the original video file (optional)
+            custom_prompt: Custom prompt to use for analysis (optional)
 
         Returns:
             Dictionary containing analysis results
@@ -54,39 +55,63 @@ class ClaudeVideoProcessor:
             content_blocks = []
 
             # Add the prompt as text block
-            prompt = f"""
-            Analyze the provided sequence of frames from a robotic dashcam video.
+            if custom_prompt:
+                # Use the custom prompt provided by the user
+                prompt = f"""
+                {custom_prompt}
 
-            The frames are from a video showing a robot performing various tasks.
-            The timestamps in seconds for each frame are as follows:
-            {', '.join([f"Frame {i + 1}: {ts} seconds" for i, ts in enumerate(selected_timestamps)])}
+                The timestamps in seconds for each frame are as follows:
+                {', '.join([f"Frame {i + 1}: {ts} seconds" for i, ts in enumerate(selected_timestamps)])}
 
-            Identify different segments of activities in the video, such as:
-            1. Robot picks up an object
-            2. Robot places an object
-            3. Robot navigates to a location
-            4. Robot manipulates a tool
-            5. Robot interacts with a human
-            6. Robot performs an inspection
-
-            For each identified segment, provide:
-            1. The start and end timestamps
-            2. A clear description of what the robot is doing
-
-            Format your response as a valid JSON object with this structure:
-            {{
-              "segments": [
+                Format your response as a valid JSON object with this structure:
                 {{
-                  "start_time": start_timestamp_in_seconds,
-                  "end_time": end_timestamp_in_seconds,
-                  "description": "Description of the robot's activity"
-                }},
-                ...
-              ]
-            }}
+                  "segments": [
+                    {{
+                      "start_time": start_timestamp_in_seconds,
+                      "end_time": end_timestamp_in_seconds,
+                      "description": "Description of the robot's activity"
+                    }},
+                    ...
+                  ]
+                }}
 
-            Only provide the JSON object with no additional text.
-            """
+                Only provide the JSON object with no additional text.
+                """
+            else:
+                # Use the default prompt
+                prompt = f"""
+                Analyze the provided sequence of frames from a robotic dashcam video.
+
+                The frames are from a video showing a robot performing various tasks.
+                The timestamps in seconds for each frame are as follows:
+                {', '.join([f"Frame {i + 1}: {ts} seconds" for i, ts in enumerate(selected_timestamps)])}
+
+                Identify different segments of activities in the video, such as:
+                1. Robot picks up an object
+                2. Robot places an object
+                3. Robot navigates to a location
+                4. Robot manipulates a tool
+                5. Robot interacts with a human
+                6. Robot performs an inspection
+
+                For each identified segment, provide:
+                1. The start and end timestamps
+                2. A clear description of what the robot is doing
+
+                Format your response as a valid JSON object with this structure:
+                {{
+                  "segments": [
+                    {{
+                      "start_time": start_timestamp_in_seconds,
+                      "end_time": end_timestamp_in_seconds,
+                      "description": "Description of the robot's activity"
+                    }},
+                    ...
+                  ]
+                }}
+
+                Only provide the JSON object with no additional text.
+                """
 
             content_blocks.append({
                 "type": "text",

@@ -23,7 +23,7 @@ class GPT4VideoProcessor:
         self.client = OpenAI(api_key=api_key)
         self.model = "gpt-4-vision-preview"
 
-    def analyze_video(self, frames, timestamps, video_path=None):
+    def analyze_video(self, frames, timestamps, video_path=None, custom_prompt=None):
         """
         Analyze video frames using GPT-4 Vision.
 
@@ -31,6 +31,7 @@ class GPT4VideoProcessor:
             frames: List of video frames (numpy arrays)
             timestamps: List of timestamps corresponding to each frame
             video_path: Path to the original video file (optional)
+            custom_prompt: Custom prompt to use for analysis (optional)
 
         Returns:
             Dictionary containing analysis results
@@ -78,7 +79,7 @@ class GPT4VideoProcessor:
                     "content": [
                         {
                             "type": "text",
-                            "text": """
+                            "text": custom_prompt if custom_prompt else """
                             Analyze the provided sequence of frames from a robotic dashcam video.
 
                             Identify different segments of activities in the video, such as:
@@ -113,6 +114,29 @@ class GPT4VideoProcessor:
                     ]
                 }
             ]
+
+            # Add frames timestamp information if using custom prompt
+            if custom_prompt:
+                messages[1]["content"][0]["text"] += "\n\nThe timestamps in seconds for each frame are as follows:\n"
+                messages[1]["content"][0]["text"] += "\n".join(
+                    [f"Frame {i + 1}: {ts} seconds" for i, ts in enumerate(selected_timestamps)])
+
+                # Add JSON format instructions if not specified in custom prompt
+                if "JSON" not in custom_prompt and "json" not in custom_prompt:
+                    messages[1]["content"][0]["text"] += """
+                    
+                    Format your response as a valid JSON object with this structure:
+                    {
+                      "segments": [
+                        {
+                          "start_time": start_timestamp_in_seconds,
+                          "end_time": end_timestamp_in_seconds,
+                          "description": "Description of the robot's activity"
+                        },
+                        ...
+                      ]
+                    }
+                    """
 
             # Add images to the message
             for i, img_data in enumerate(base64_images):
