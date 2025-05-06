@@ -10,8 +10,6 @@ import time
 
 # Import AI model modules
 from models.gemini_processor import GeminiVideoProcessor
-from models.gpt4_processor import GPT4VideoProcessor
-from models.claude_processor import ClaudeVideoProcessor
 
 # Setup logging
 logging.basicConfig(
@@ -39,60 +37,11 @@ def allowed_file(filename):
 
 
 # Factory function to get the appropriate model processor
+# Update this function to only use Gemini
 def get_model_processor(model_name):
-    processors = {
-        'gemini': GeminiVideoProcessor(),
-        'gpt4': GPT4VideoProcessor(),
-        'claude': ClaudeVideoProcessor(),
-    }
+    # Always return the Gemini processor regardless of the model_name
+    return GeminiVideoProcessor()
 
-    # Check if the selected model is enabled
-    try:
-        processor = processors.get(model_name)
-        if processor:
-            return processor
-        else:
-            logger.warning(f"Unknown model requested: {model_name}, falling back to Gemini")
-            return GeminiVideoProcessor()
-    except Exception as e:
-        logger.error(f"Error initializing {model_name} processor: {e}")
-        # If there's an error with the requested model, fall back to Gemini
-        return GeminiVideoProcessor()
-
-
-def extract_frames(video_path, sample_rate=1):
-    """
-    Extract frames from a video at a given sample rate
-    sample_rate: extract one frame every 'sample_rate' seconds
-    """
-    frames = []
-    timestamps = []
-
-    video = cv2.VideoCapture(video_path)
-    if not video.isOpened():
-        logger.error(f"Failed to open video: {video_path}")
-        return [], []
-
-    fps = video.get(cv2.CAP_PROP_FPS)
-    frame_interval = int(fps * sample_rate)
-
-    frame_count = 0
-    while True:
-        ret, frame = video.read()
-        if not ret:
-            break
-
-        if frame_count % frame_interval == 0:
-            # Convert frame from BGR to RGB
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frames.append(frame_rgb)
-            timestamps.append(frame_count / fps)
-
-        frame_count += 1
-
-    video.release()
-    logger.info(f"Extracted {len(frames)} frames from video")
-    return frames, timestamps
 
 
 def download_video(url, output_path):
@@ -123,13 +72,12 @@ def analyze_video():
         if 'video' not in request.files and 'video_url' not in request.form:
             return jsonify({'error': 'No video file or URL provided'}), 400
 
-        # Get selected model
-        model_name = request.form.get('model', 'gemini')
+        # We only use Gemini now
         try:
-            processor = get_model_processor(model_name)
+            processor = get_model_processor('gemini')
         except Exception as e:
             logger.error(f"Failed to initialize model processor: {e}")
-            return jsonify({'error': 'Failed to initialize AI model. Please try a different model.'}), 500
+            return jsonify({'error': 'Failed to initialize Gemini AI model.'}), 500
 
         video_path = None
 
@@ -168,27 +116,14 @@ def analyze_video():
             except ValueError as e:
                 return jsonify({'error': str(e)}), 400
 
-        # Extract frames from video for analysis
+        # Check if file exists and is accessible
+        if not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
+            return jsonify({'error': 'Video file is missing or empty'}), 400
+
+        # Process using the Gemini model (direct video processing)
         try:
-            frames, timestamps = extract_frames(video_path, sample_rate=1)  # 1 frame per second
-        except Exception as e:
-            logger.error(f"Frame extraction error: {e}")
-            return jsonify({'error': 'Failed to extract frames from video. The file may be corrupted.'}), 400
-
-        if not frames:
-            return jsonify({'error': 'Failed to extract frames from video. The file may be empty or corrupted.'}), 400
-
-        # Process frames using the selected AI model
-        try:
-            # Get custom prompt if provided
-            custom_prompt = request.form.get('custom_prompt', None)
-
-            if model_name in ['gpt4', 'claude']:
-                results = processor.analyze_video(frames, timestamps, video_path, custom_prompt)
-            else:  # gemini
-                results = processor.analyze_video(video_path)
-
-            logger.info(f"Successfully analyzed video with {model_name} model")
+            results = processor.analyze_video(video_path)
+            logger.info(f"Successfully analyzed video with Gemini model")
 
             # Validate results structure
             if not isinstance(results, dict) or 'segments' not in results:
@@ -210,7 +145,6 @@ def analyze_video():
     except Exception as e:
         logger.error(f"Unexpected error: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred. Please try again later.'}), 500
-
 
 # Add a health check endpoint
 @app.route('/health', methods=['GET'])
