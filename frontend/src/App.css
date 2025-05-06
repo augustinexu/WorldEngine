@@ -1,0 +1,133 @@
+/* Main app container */
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  /* Header section styling */
+  header {
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  
+  header h1 {
+    margin-bottom: 5px;
+    color: #2196F3;
+    font-size: 32px;
+  }
+  
+  .app-description {
+    color: #666;
+    font-size: 16px;
+    margin-top: 0;
+  }
+  
+  /* Main content layout */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 20px;
+  }
+  
+  .control-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .content-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  /* No results message */
+  .no-results-message {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  
+  .message-icon {
+    margin-bottom: 15px;
+  }
+  
+  .message-icon .material-icons {
+    font-size: 48px;
+    color: #999;
+  }
+  
+  .no-results-message h3 {
+    margin-top: 0;
+    color: #333;
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+  
+  .no-results-message p {
+    color: #666;
+    margin-bottom: 20px;
+  }
+  
+  /* Footer styling */
+  footer {
+    margin-top: 40px;
+    text-align: center;
+    color: #777;
+    font-size: 14px;
+    padding: 20px;
+    border-top: 1px solid #eee;
+  }
+  
+  /* Responsive layout */
+  @media (max-width: 900px) {
+    main {
+      grid-template-columns: 1fr;
+    }
+    
+    .content-panel {
+      order: 1;
+    }
+    
+    .control-panel {
+      order: 2;
+    }
+    
+    header h1 {
+      font-size: 26px;
+    }
+    
+    .app-description {
+      font-size: 14px;
+    }
+  }
+  
+  /* Animation for transitions */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .content-panel > div {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  /* Retry button for the no results message */
+  .retry-button {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    display: inline-block;
+  }
+  
+  .retry-button:hover {
+    background-color: #0d8aee;
+  }
